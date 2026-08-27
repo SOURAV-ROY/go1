@@ -1,0 +1,41 @@
+# Binaries and executable files
+bin/
+nagad-server
+main
+nagad-integration
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary
+*.test
+
+# Output of 'go install'
+/pkg/
+
+# Tooling output
+*.prof
+
+# Vendor directory
+vendor/
+
+# Environment files
+.env
+*.env.local
+
+# OS specific files
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+
+# Editor directories and files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Project specific
+server.log
