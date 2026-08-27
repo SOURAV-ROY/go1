@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/souravroyscr/nagad-integration/nagad"
 )
@@ -38,8 +39,8 @@ func main() {
 	mux.HandleFunc("/api/pay", handlePay)
 	mux.HandleFunc("/api/verify", handleVerify)
 
-	// Add basic CORS middleware
-	handler := corsMiddleware(mux)
+	// Add middleware
+	handler := loggingMiddleware(corsMiddleware(mux))
 
 	port := getEnv("PORT", "8080")
 	fmt.Printf("Bridge server starting on :%s\n", port)
@@ -127,5 +128,47 @@ func corsMiddleware(next http.Handler) http.Handler {
 		}
 
 		next.ServeHTTP(w, r)
+	})
+}
+
+// responseWriter is a wrapper for http.ResponseWriter to capture the status code
+type responseWriter struct {
+	http.ResponseWriter
+	status      int
+	wroteHeader bool
+}
+
+func (rw *responseWriter) WriteHeader(code int) {
+	if rw.wroteHeader {
+		return
+	}
+	rw.status = code
+	rw.wroteHeader = true
+	rw.ResponseWriter.WriteHeader(code)
+}
+
+func (rw *responseWriter) Write(b []byte) (int, error) {
+	if !rw.wroteHeader {
+		rw.WriteHeader(http.StatusOK)
+	}
+	return rw.ResponseWriter.Write(b)
+}
+
+func loggingMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+
+		rw := &responseWriter{ResponseWriter: w, status: http.StatusOK}
+
+		next.ServeHTTP(rw, r)
+
+		log.Printf(
+			"method=%s path=%s remote=%s status=%d duration=%s",
+			r.Method,
+			r.URL.Path,
+			r.RemoteAddr,
+			rw.status,
+			time.Since(start),
+		)
 	})
 }
