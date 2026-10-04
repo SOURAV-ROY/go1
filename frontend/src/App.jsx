@@ -29,12 +29,14 @@ const ThemeToggle = () => {
 const CheckoutCard = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [gateway, setGateway] = useState('nagad'); // 'nagad' or 'upay'
 
   const handlePayment = async () => {
     setLoading(true);
     setError(null);
     try {
       const resp = await axios.post(`${API_BASE}/pay`, {
+        gateway,
         orderId: `ORD-${Math.floor(Math.random() * 1000000)}`,
         amount: "100.00",
         ip: "127.0.0.1"
@@ -68,7 +70,39 @@ const CheckoutCard = () => {
           <span>Amount</span>
           <span className="text-zinc-950 dark:text-zinc-50 font-medium">100.00 BDT</span>
         </div>
+        
         <div className="h-px bg-zinc-100 dark:bg-zinc-800 w-full" />
+        
+        <div className="space-y-3">
+          <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Select Payment Gateway</label>
+          <div className="grid grid-cols-2 gap-4">
+            <button
+              onClick={() => setGateway('nagad')}
+              className={`p-3 rounded-xl border-2 transition-all flex flex-col items-center gap-2 ${
+                gateway === 'nagad' 
+                  ? 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-500/10' 
+                  : 'border-zinc-100 dark:border-zinc-800 bg-transparent hover:border-zinc-200 dark:hover:border-zinc-700'
+              }`}
+            >
+              <div className="w-8 h-8 rounded-full bg-rose-500 flex items-center justify-center text-white font-bold text-xs">N</div>
+              <span className="text-xs font-semibold">Nagad</span>
+            </button>
+            <button
+              onClick={() => setGateway('upay')}
+              className={`p-3 rounded-xl border-2 transition-all flex flex-col items-center gap-2 ${
+                gateway === 'upay' 
+                  ? 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-500/10' 
+                  : 'border-zinc-100 dark:border-zinc-800 bg-transparent hover:border-zinc-200 dark:hover:border-zinc-700'
+              }`}
+            >
+              <div className="w-8 h-8 rounded-full bg-yellow-500 flex items-center justify-center text-white font-bold text-xs">U</div>
+              <span className="text-xs font-semibold">UPAY</span>
+            </button>
+          </div>
+        </div>
+
+        <div className="h-px bg-zinc-100 dark:bg-zinc-800 w-full" />
+        
         <div className="flex justify-between text-lg font-bold">
           <span>Total</span>
           <span className="text-emerald-600">100.00 BDT</span>
@@ -87,11 +121,11 @@ const CheckoutCard = () => {
         className="w-full bg-[#059669] hover:bg-[#047857] disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl transition-all shadow-lg flex items-center justify-center gap-2"
       >
         {loading ? <Loader2 className="animate-spin" size={20} /> : null}
-        {loading ? 'Initializing...' : 'Pay with Nagad'}
+        {loading ? 'Initializing...' : `Pay with ${gateway === 'nagad' ? 'Nagad' : 'UPAY'}`}
       </button>
       
       <p className="mt-4 text-center text-xs text-zinc-500 dark:text-zinc-500">
-        You will be redirected to Nagad's secure payment portal
+        You will be redirected to {gateway === 'nagad' ? 'Nagad' : 'UPAY'}'s secure payment portal
       </p>
     </div>
   );
@@ -104,13 +138,19 @@ const PaymentCallback = () => {
 
   useEffect(() => {
     const verifyPayment = async () => {
-      const paymentRefId = searchParams.get('paymentRefId');
+      const gateway = searchParams.get('gateway') || 'nagad';
+      const paymentRefId = searchParams.get('paymentRefId'); // Nagad
+      const invoiceId = searchParams.get('invoice_id'); // UPAY (assuming it's passed back)
       const apiStatus = searchParams.get('status');
 
-      if (apiStatus === 'Success' && paymentRefId) {
+      if ((apiStatus === 'Success' || apiStatus === 'SUCCESS') && (paymentRefId || invoiceId)) {
         try {
-          const resp = await axios.post(`${API_BASE}/verify`, { paymentRefId });
-          if (resp.data.status === 'Success') {
+          const resp = await axios.post(`${API_BASE}/verify`, { 
+            gateway,
+            paymentRefId,
+            invoiceId: invoiceId || searchParams.get('invoice_id')
+          });
+          if (resp.data.status === 'Success' || resp.data.status === 'SUCCESS') {
             setStatus('success');
           } else {
             setStatus('failed');
@@ -132,7 +172,7 @@ const PaymentCallback = () => {
         <div className="space-y-4">
           <Loader2 className="animate-spin mx-auto text-emerald-500" size={48} />
           <h2 className="text-xl font-bold">Verifying Payment...</h2>
-          <p className="text-zinc-500">Please wait while we confirm your transaction with Nagad.</p>
+          <p className="text-zinc-500">Please wait while we confirm your transaction.</p>
         </div>
       )}
 
